@@ -10,6 +10,7 @@ Additional dependencies are in the `requirements`
 
 ```bash
 # First install `fewshot` package from `fleet`
+# then install additional requirements
 pip install -r requirements.txt
 ```
 
