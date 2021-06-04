@@ -13,14 +13,7 @@ def assemble_sampler_cfg(cfg: DictConfig, split: str) -> DictConfig:
     elif 'train' in split:
         store_cfgs = challenge_spec.train_stores
     elif 'test' in split:
-        logger.warning('Peeking at some test datasets!!!!')
-        store_cfgs = {
-            'newsgroup': fewshot.stores.NewsgroupStoreCfg(split='test'),
-            'reuters': fewshot.stores.ReutersStoreCfg(split='test'),
-            'huffpost': fewshot.stores.HuffpostStoreCfg(split='test'),
-            'fewrel': fewshot.stores.FewrelStoreCfg(split='test'),
-            'amazon': fewshot.stores.AmazonStoreCfg(split='test'),
-        }
+        raise RuntimeError('Peeking at some test datasets!!!!')
     else:
         raise ValueError(f'Unrecognized split {split}')
 

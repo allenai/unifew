@@ -28,7 +28,8 @@ def main(cfg: DictConfig) -> None:
         version=0  # always use version=0
     )
     model_ckpt = ModelCheckpoint(
-        filepath=os.path.join(cfg.save_dir, cfg.save_prefix, '{epoch}-{step}-{avg_val_acc:.2f}'),
+        dirpath=os.path.join(cfg.save_dir, cfg.save_prefix),
+        filename='{epoch}-{step}-{avg_val_acc:.2f}',
         monitor='avg_val_acc',
         mode='max',
         save_top_k=cfg.save_top_k,
@@ -40,7 +41,7 @@ def main(cfg: DictConfig) -> None:
         logger=tensorboad_logger,
         checkpoint_callback=model_ckpt,
     )
-    if not cfg.test:
+    if not cfg.test_only:
         trainer.fit(model)
     trainer.test(model)
 

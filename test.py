@@ -202,12 +202,11 @@ class PTLWrapperModel(Model):
         for p in self.model.parameters():
             p.requires_grad = False
         if len(val_ds) > 0:  # load model from checkpoint
-            results = trainer.test(test_dataloaders=test_loader)
+            results = trainer.predict(dataloaders=test_loader)
         else:
-            results = trainer.test(self.model, test_dataloaders=test_loader)
+            results = trainer.predict(self.model, dataloaders=test_loader)
 
-        assert len(results) == 1
-        predictions = results[0]['predictions'].tolist()
+        predictions = torch.cat(results).tolist()
         # dummy scores, the model doesn't support scoring predictions atm
         scores = [1.0 for _ in predictions]
 

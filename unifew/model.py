@@ -227,66 +227,6 @@ class UnifewDataset(IterableDataset):
             doc_token_ids_, label_token_ids_ = doc_token_ids_batches[j], label_token_ids_batches[j]
             yield doc_token_ids_, label_token_ids_, metadata
 
-    @staticmethod
-    def get_current_set(support_x, query_x, support_y, query_y, metadata, tokenizer, maxlen, k, question, data_format):
-        "returns a generator so that every query example is broken into batch sizes of 1"
-        # TODO: improvment, support creating batches of greater than 1
-        assert len(query_x) == len(support_x) == len(support_y) == 1
-        metadata, task_type = UnifewDataset.format_labels(metadata, query_x[0])
-        idx_to_label = {v: k for k, v in metadata[0]['mapped_labels'].items()}
-        max_pred_len = max([len(tokenizer.tokenize(k)) for k in metadata[0]['mapped_labels']])
-        maxlen = maxlen - max_pred_len  # generation length
-        for j in range(len(query_x[0])):
-            example = query_x[0][j]
-            label = query_y[0][j] if query_y else None
-            test_context = []
-            query_tokens = UnifewDataset.encode_question_and_label(
-                text=example, question_str=question,
-                tokenizer=tokenizer, maxlen=maxlen,
-                all_labels=list(metadata[0]['mapped_labels'].keys()),
-                task_type=task_type)
-            test_context.extend(query_tokens)
-            seen_labels = defaultdict(int)
-            if k > 0:  # few shot
-                # this is similar to GPT3 encoding
-                # we fill up the model context with other examples in the format of question/answer pairs
-                expected_len = len(test_context)
-                training_context = []  # list of additional training samples to add to the context
-                tries = 0  # try adding examples to the context
-                # TODO: 100 might be too much.
-                support_x_y = list(zip(support_x[0], support_y[0]))
-                if len(support_x[0]) < 100:
-                    samples = random.choices(support_x_y, k=100)  # select 100 samples from training set
-                else:
-                    samples = random.sample(support_x_y, 100)  # select 100 samples from training set
-                while expected_len < maxlen and tries < 100:
-                    train_example = samples[tries]
-                    train_text = train_example[0]
-                    train_label = idx_to_label[train_example[1]]
-                    seen_labels[train_label] += 1
-                    # convert classification instance to qa instance
-                    train_context_tokens = UnifewDataset.encode_question_and_label(
-                        is_predict=False, question_str=question,
-                        tokenizer=tokenizer, maxlen=maxlen,
-                        all_labels=list(metadata[0]['mapped_labels'].keys()))
-                    expected_len += len(train_context_tokens)
-                    training_context.append(train_context_tokens)
-                    tries += 1
-                flattened_training_context = list(itertools.chain.from_iterable(training_context[:-1]))
-                if data_format == 't5':
-                    test_context = test_context + flattened_training_context
-                else:
-                    test_context = flattened_training_context + test_context
-                if len(test_context) > maxlen:
-                    raise RuntimeError("context longer than threshold")
-
-                if len(test_context) == 0:
-                    raise RuntimeError('Could not fit even one example in the context')
-            label = torch.tensor([label]).unsqueeze(0) if label is not None else None
-            metadata[0]['seen_labels'] = str(seen_labels)
-            # print(tokenizer.convert_tokens_to_string(tokenizer.convert_ids_to_tokens(test_context)))
-            yield torch.tensor([test_context]), label, metadata
-
     def __iter__(self):
         return self.get_samples()
 
@@ -329,7 +269,6 @@ class UnifewDataset(IterableDataset):
         else:
             metadata[0]['mapped_labels'] = metadata[0]['text_labels']
         metadata[0]['mapped_labels'] = {k.replace('_', ' '): v for k, v in metadata[0]['mapped_labels'].items()}
-        print(task_type, metadata[0]['dataset'])
         return metadata, task_type
 
     def get_samples(self):
@@ -389,7 +328,7 @@ class Unifew(pl.LightningModule):
     
     def __init__(self, hparams, model=None, tokenizer=None, max_len=None) -> None:
         super(Unifew, self).__init__()
-        self.hparams = hparams
+        self.hparams.update(hparams)
         self.args = hparams
         self.train_dataloader_object = self.val_dataloader_object = self.test_dataloader_object = None
         if model is None:
@@ -435,10 +374,13 @@ class Unifew(pl.LightningModule):
             tensorboard_logs = {'lr': learning_rate,
                                 'mem': torch.cuda.memory_allocated(loss.device) / 1024 ** 3 if torch.cuda.is_available() else 0,
                                 'tr_loss': loss.detach().item()}
-            return {'loss': loss, 'log': tensorboard_logs, 'progress_bar': {'lr': learning_rate}}
+            for k, v in tensorboard_logs.items():
+                self.log(k, v)
+            # return {'loss': loss, 'log': tensorboard_logs, 'progress_bar': {'lr': learning_rate}}
+            return loss
         else:
             # return an unused loss value, otherwise PL throws errors
-            return {'loss': support_token_ids.new_ones(1) * 1.0}
+            return support_token_ids.new_ones(1) * 1.0
 
     def backward(self, closure_loss, optimizer, opt_idx, *args, **kwargs):
         if self.args.model_type == 'unifew' and getattr(self.args, 'do_train', False):
@@ -514,20 +456,25 @@ class Unifew(pl.LightningModule):
         predictions = torch.cat([x['test_prediction'] for x in outputs])
         return {'predictions': predictions}
 
+    def predict_step(self, batch, batch_idx: int , dataloader_idx: int = None):
+        res = self._validation_step(batch, batch_idx, is_test=False)
+        return res['prediction']
+
     def optimizer_step(
         self,
         epoch: int,
         batch_idx: int,
         optimizer: Optimizer,
         optimizer_idx: int,
-        second_order_closure: Optional[Callable] = None,
+        optimizer_closure: Optional[Callable] = None,
         on_tpu: bool = False,
         using_native_amp: bool = False,
         using_lbfgs: bool = False,
     ):
         if self.args.model_type == 'unifew' and getattr(self.args, 'do_train', False):
-            optimizer.step()
-            optimizer.zero_grad()  # prob not needed as PL already does this through model.optimizer_zero_grad
+            super().optimizer_step(epoch, batch_idx, optimizer, optimizer_idx, optimizer_closure, on_tpu, using_native_amp, using_lbfgs)
+            # optimizer.step()
+            # optimizer.zero_grad()  # prob not needed as PL already does this through model.optimizer_zero_grad
         else:
             pass
 

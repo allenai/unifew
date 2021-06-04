@@ -1,23 +1,25 @@
 # @package _global_
 defaults:
   - sampler: 5way-5shot
-challenge: text-classification-bao-5way-5shot-20k
+challenge: text-classification-combined-5_10way-1_5shot
 
 batch_size: 1
 
 save_dir: 'outputs/runs'
-save_top_k: 1
+save_prefix: 'checkpoints'
+save_top_k: 4
 seed: 1234
 
-question: "This article is about which of the following topics?"
-k: 0  # [0, 1] 0 for 0 shot, 1 for few shot
+question: "Topic?"
 model_type: unifew
 num_workers: 0
 warmup: null
 lr: 3e-5
 do_train: true
-query_batch_size: 2  # the actual batch size
+query_batch_size: 4  # the actual batch size
 uniqa_path: ''
+test_only: false
+use_trec_format: true
 
 trainer:
   gpus: 1
@@ -25,7 +27,7 @@ trainer:
   precision: 32
   amp_level: 'O2'
   num_sanity_val_steps: 5
-  limit_val_batches: 400
+  limit_val_batches: 300
   limit_test_batches: 200
   val_check_interval: 400  # Match limit_train_batches to check each epoch
   max_steps: 30000
