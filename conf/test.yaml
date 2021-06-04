@@ -1,0 +1,11 @@
+# @package _global_
+defaults:
+  - model: sample-trained-model
+  - default_model: model
+
+challenge: text-classification-bao-5way-5shot-20k
+model.uniqa_path: ''
+test: true
+start: 0
+stop: null
+seed: 10

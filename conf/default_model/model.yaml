@@ -1,0 +1,50 @@
+challenge: text-classification-bao-5way-5shot-20k
+
+debug: false  # debug uses MyDataset instead of the sampler
+debug_num_workers: 0  # Number of data loader workers
+debug_num_classes: 2
+debug_batch_size: 1
+batch_size: 1
+debug_dataset: mag   #  ['mag', 'sanity', 'mesh_167']
+
+save_dir: 'outputs/runs'
+save_prefix: test
+predictions_path: 'output/predictions.json'
+save_top_k: 1
+seed: 1234
+test: false  # This model only runs in test mode
+
+task_type: classification  # input type based on task
+question: "Topic?"
+k: 0  # [0, 1] 0 for 0 shot, 1 for few shot
+model_type: unifew
+input_format: gpt
+max_len: 1024
+num_workers: 0
+warmup: null
+lr: 3e-5
+do_train: true
+query_batch_size: 2
+# uniqa_path: '/net/nfs2.corp/s2-research/beltagy/qasper-baselines/unified_qa/t5-large-pt/'
+uniqa_path: ''
+use_constant_schedule: true
+optimizer: adam
+
+trainer:
+  gpus: 1
+  track_grad_norm: -1
+  accumulate_grad_batches: 1
+  resume_from_checkpoint: null
+  precision: 32
+  amp_level: 'O2'
+  num_sanity_val_steps: 5
+  limit_val_batches: 200
+  limit_test_batches: 200
+  val_check_interval: 200  # Match limit_train_batches to check each epoch
+  max_steps: 15000
+
+metadatasetsampler_cfg:
+  dataloader_num_workers: 0
+  dataloader_batch_size: 1
+  seed: 121
+  datasets:

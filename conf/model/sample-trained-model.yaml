@@ -1,0 +1,17 @@
+_target_: test.PTLWrapperModel
+seed: 10
+model_type: unifew
+k: 1
+question: "Topic?"
+num_workers: 0
+ckpt_path: null
+support_batch_size: 2
+query_batch_size: 2
+max_steps: 400
+val_check_interval: 1.0
+check_val_every_n_epoch: 25
+do_train: false
+trainer.max_steps: 400
+lr: 3e-5
+use_trec_format: true
+use_constant_schedule: true 

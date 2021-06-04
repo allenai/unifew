@@ -1,0 +1,38 @@
+# @package _global_
+defaults:
+  - sampler: 5way-5shot
+challenge: text-classification-bao-5way-5shot-20k
+
+batch_size: 1
+
+save_dir: 'outputs/runs'
+save_top_k: 1
+seed: 1234
+
+question: "This article is about which of the following topics?"
+k: 0  # [0, 1] 0 for 0 shot, 1 for few shot
+model_type: unifew
+num_workers: 0
+warmup: null
+lr: 3e-5
+do_train: true
+query_batch_size: 2  # the actual batch size
+uniqa_path: ''
+
+trainer:
+  gpus: 1
+  accumulate_grad_batches: 1
+  precision: 32
+  amp_level: 'O2'
+  num_sanity_val_steps: 5
+  limit_val_batches: 400
+  limit_test_batches: 200
+  val_check_interval: 400  # Match limit_train_batches to check each epoch
+  max_steps: 30000
+
+metadatasetsampler_cfg:
+  _target_: fewshot.datasets.MetadataSamplerCfg
+  dataloader_num_workers: 0
+  dataloader_batch_size: 1
+  seed: ${seed}
+  datasets:
