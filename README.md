@@ -26,7 +26,6 @@ This will run the model and save predictions in the `output/` directory.
 You can use multiple GPUs to predict on different slices of the fleet challenge by specifing additional `start` and `stop` arguments.
 
 If you wish to use a model that you have previously meta-trained, simply provide the relevant `ckpt_path=/path/to/checkpoint.ckpt` argument.
-We have included our meta-trained model checkpoint in the submission. 
 
 ## Meta-train the model
 
