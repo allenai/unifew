@@ -120,12 +120,10 @@ class PTLWrapperModel(Model):
         ]
         support_x = [support_x[idx]["txt"] for idx in valid_indices]
         support_y = [support_y[idx] for idx in valid_indices]
-        support_x = [support_x]
 
         # here labels are passed in as string, convert to int
-        support_y = [list(map(int, support_y))]
-        target_x = [[el["txt"] for el in target_x]]
-        metadata = [metadata]
+        support_y = list(map(int, support_y))
+        target_x = [el["txt"] for el in target_x]
         # setting for LM-BFF, use half examples as val.
 
         def split_for_lm_bff(support_x, support_y):
@@ -154,7 +152,7 @@ class PTLWrapperModel(Model):
 
             train_x, train_y = two_list_shuffle(train_x, train_y)
             val_x, val_y = two_list_shuffle(val_x, val_y)
-            return [train_x], [train_y], [val_x], [val_y]
+            return train_x, train_y, val_x, val_y
 
         if val_x is not None:
             valid_indices = [
@@ -162,9 +160,8 @@ class PTLWrapperModel(Model):
             ]
             val_x = [val_x[idx]["txt"] for idx in valid_indices]
             val_y = [val_y[idx] for idx in valid_indices]
-            val_x = [val_x]
             # here labels are passed in as string, convert to int
-            val_y = [list(map(int, val_y))]
+            val_y = list(map(int, val_y))
             # metadata, tokenizer, maxlen, question, subset, args
             val_ds = list(
                 UnifewDataset.get_current_set_separate_train_test(
