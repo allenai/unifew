@@ -1,7 +1,7 @@
 # @package _global_
 defaults:
   - sampler: 5way-5shot
-challenge: text-classification-combined-5_10way-1_5shot
+challenge: flex
 
 batch_size: 1
 
@@ -34,7 +34,5 @@ trainer:
 
 metadatasetsampler_cfg:
   _target_: fewshot.datasets.MetadataSamplerCfg
-  dataloader_num_workers: 0
-  dataloader_batch_size: 1
   seed: ${seed}
   datasets:

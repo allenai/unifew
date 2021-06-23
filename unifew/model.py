@@ -102,7 +102,7 @@ class UnifewDataset(IterableDataset):
         random_seed = 0 if worker_info is None else int(worker_info.id)
         sampler_cfg = assemble_sampler_cfg(args, split=subset)
         sampler_cfg.seed = random_seed
-        assert sampler_cfg.dataloader_batch_size == 1
+        # assert sampler_cfg.dataloader_batch_size == 1
         self.metadatasampler = hydra.utils.instantiate(sampler_cfg)
         self.tokenizer = tokenizer
         UnifewDataset.tokenizer = tokenizer
@@ -170,7 +170,6 @@ class UnifewDataset(IterableDataset):
         else:
             premise, hypothesis = text.split("###")
             # for NLI we use a slightly different formatting, following Gao et al (2020)
-            # final_text += f'\\n sentence 1: "{premise}" sentence 2: "{hypothesis}" \n'
             final_text = f"{premise} Is {hypothesis}? \\n"
             for i, e in enumerate(all_labels):
                 final_text += f" ({string.ascii_uppercase[i]}) {e} "
@@ -194,14 +193,10 @@ class UnifewDataset(IterableDataset):
         args,
     ):
         "breaks the support and target and returns"
-        assert len(query_x) == len(support_x) == len(support_y) == 1
-        metadata, task_type = UnifewDataset.format_labels(metadata, query_x[0])
-        query_x = query_x[0]
-        query_y = query_y[0] if query_y else None
-        support_x = support_x[0]
-        support_y = support_y[0]
+        # assert len(query_x) == len(support_x) == len(support_y) == 1
+        metadata, task_type = UnifewDataset.format_labels(metadata, query_x)
 
-        idx_to_label = {v: k for k, v in metadata[0]["mapped_labels"].items()}
+        idx_to_label = {v: k for k, v in metadata["mapped_labels"].items()}
 
         def encode_and_tokenize_docs(doc_list):
             """
@@ -214,7 +209,7 @@ class UnifewDataset(IterableDataset):
                     question_str=question,
                     tokenizer=tokenizer,
                     maxlen=maxlen,
-                    all_labels=list(metadata[0]["mapped_labels"].keys()),
+                    all_labels=list(metadata["mapped_labels"].keys()),
                     task_type=task_type,
                     args=args,
                 )
@@ -246,7 +241,7 @@ class UnifewDataset(IterableDataset):
             ]
         else:
             # meta-test time
-            # using test_model.py this function is called twice for meta-test
+            # using test.py this function is called twice for meta-test
             # (once with subset == 'train' and once with subset == 'dev'/'test')
             # once to get training examples from support set, and once to get test examples from the query set
             if subset != "train":
@@ -269,13 +264,11 @@ class UnifewDataset(IterableDataset):
                 query_y = support_y
                 query_labels = [idx_to_label[lbl] for lbl in query_y]
 
-                if (
-                    query_labels
-                ):  # sometimes the episode does not provide any support examples
+                if query_labels:
                     textual_label_token_ids = tokenizer.batch_encode_plus(
                         query_labels, add_special_tokens=True, padding=True
                     )["input_ids"]
-                else:
+                else:  # sometimes the episode does not provide any support examples
                     textual_label_token_ids = [[]]
                 if query_x:
                     doc_token_ids_list = encode_and_tokenize_docs(query_x)
@@ -316,7 +309,8 @@ class UnifewDataset(IterableDataset):
     def format_labels(metadata, query_x):
         """format labels"""
         nli_datasets = ["scitail", "nli", "rte"]
-        # TODO: dataset information was not avaialbe in metadata in earlier versions and we used to infer it from labels
+        # TODO: dataset information was not avaialbe in metadata in earlier versions of flex
+        # We used to infer it from labels
         # some code here related to this needs cleaning up
         sentiment_label_mapping = {"positive": "positive", "negative": "negative"}
         snli_label_mapping = {
@@ -335,14 +329,14 @@ class UnifewDataset(IterableDataset):
             "human": "human",
         }
 
-        current_lable_set = set(metadata[0]["text_labels"].keys())
+        current_lable_set = set(metadata["text_labels"].keys())
 
         mappings = None
-        if not isinstance(metadata[0]["dataset"], str):
-            metadata[0]["dataset"] = metadata[0]["dataset"].name
+        if not isinstance(metadata["dataset"], str):
+            metadata["dataset"] = metadata["dataset"].name
         task_type = "generic"
         for dsname in nli_datasets:
-            if dsname in metadata[0]["dataset"]:
+            if dsname in metadata["dataset"]:
                 mappings = snli_label_mapping
                 task_type = "nli"
                 break
@@ -353,17 +347,17 @@ class UnifewDataset(IterableDataset):
             task_type = "subj"
         elif current_lable_set == set(trec_label_mapping.keys()):
             task_type = "trec"
-        if metadata[0]["dataset"] == "conll":
+        if metadata["dataset"] == "conll":
             task_type = "conll"
 
         if mappings is not None:
-            metadata[0]["mapped_labels"] = {
-                mappings[e]: v for e, v in metadata[0]["text_labels"].items()
+            metadata["mapped_labels"] = {
+                mappings[e]: v for e, v in metadata["text_labels"].items()
             }
         else:
-            metadata[0]["mapped_labels"] = metadata[0]["text_labels"]
-        metadata[0]["mapped_labels"] = {
-            k.replace("_", " "): v for k, v in metadata[0]["mapped_labels"].items()
+            metadata["mapped_labels"] = metadata["text_labels"]
+        metadata["mapped_labels"] = {
+            k.replace("_", " "): v for k, v in metadata["mapped_labels"].items()
         }
         return metadata, task_type
 
@@ -467,7 +461,6 @@ class Unifew(pl.LightningModule):
             }
             for k, v in tensorboard_logs.items():
                 self.log(k, v)
-            # return {'loss': loss, 'log': tensorboard_logs, 'progress_bar': {'lr': learning_rate}}
             return loss
         else:
             # return an unused loss value, otherwise PL throws errors
@@ -485,9 +478,9 @@ class Unifew(pl.LightningModule):
 
         query_token_ids, query_y_ids, metadata = batch
 
-        label_to_idx = metadata[0]["mapped_labels"]
+        label_to_idx = metadata["mapped_labels"]
 
-        for key in metadata[0]["mapped_labels"]:
+        for key in metadata["mapped_labels"]:
             if key not in self.all_labels:
                 self.all_labels[key] = len(self.all_labels)
 

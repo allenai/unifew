@@ -44,7 +44,5 @@ trainer:
   max_steps: 15000
 
 metadatasetsampler_cfg:
-  dataloader_num_workers: 0
-  dataloader_batch_size: 1
   seed: 121
   datasets:
