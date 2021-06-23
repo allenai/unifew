@@ -137,7 +137,7 @@ class UnifewDataset(IterableDataset):
             final_text = f'What is the type of the entity between the # marks?'
         else:
             final_text = f'{question_str} \\n'
-        
+
         # add label strings and answers
         for i, e in enumerate(all_labels):
             final_text += f' ({string.ascii_uppercase[i]}) {e} '
@@ -152,6 +152,7 @@ class UnifewDataset(IterableDataset):
                 final_text += f' ({string.ascii_uppercase[i]}) {e} '
         context_tokens = tokenizer.encode(final_text, add_special_tokens=True,
                                             padding='longest', truncation=True)
+        
         return context_tokens
 
     @staticmethod
@@ -217,7 +218,7 @@ class UnifewDataset(IterableDataset):
                 else:
                     textual_label_token_ids = [[]]
                 if query_x:
-                    doc_token_ids_list = encode_and_tokenize_docs(query_x, textual_label_token_ids, is_predict=True)
+                    doc_token_ids_list = encode_and_tokenize_docs(query_x)
                 else:  # sometimes there is no support example in the episode
                     doc_token_ids_list = [[]]
                 label_token_ids_batches = [torch.tensor(e) for e in create_batches(textual_label_token_ids, args.query_batch_size, tensorize=True, pad=True, padding_value=tokenizer.pad_token_id)]
@@ -292,7 +293,7 @@ class UnifewDataset(IterableDataset):
 
     @classmethod
     def qa_encode(cls, label, question='What is the topic of this article? ',
-                  task_type='cls', is_predict=True, all_labels=None):
+                  task_type='cls', all_labels=None):
         """ encode text in gpt-3 style context
         Args:
             example: fewshot.data.ExampleId
