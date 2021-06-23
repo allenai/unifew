@@ -10,7 +10,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from omegaconf import OmegaConf, DictConfig
 
 
-@hydra.main(config_path='conf', config_name='train')
+@hydra.main(config_path="conf", config_name="train")
 def main(cfg: DictConfig) -> None:
     # cfg = OmegaConf.to_container(cfg, resolve=True)
 
@@ -23,21 +23,19 @@ def main(cfg: DictConfig) -> None:
     model = Unifew(cfg)
 
     tensorboad_logger = TensorBoardLogger(
-        save_dir=cfg.save_dir,
-        name=cfg.save_prefix,
-        version=0  # always use version=0
+        save_dir=cfg.save_dir, name=cfg.save_prefix, version=0  # always use version=0
     )
     model_ckpt = ModelCheckpoint(
         dirpath=os.path.join(cfg.save_dir, cfg.save_prefix),
-        filename='{epoch}-{step}-{avg_val_acc:.2f}',
-        monitor='avg_val_acc',
-        mode='max',
+        filename="{epoch}-{step}-{avg_val_acc:.2f}",
+        monitor="avg_val_acc",
+        mode="max",
         save_top_k=cfg.save_top_k,
     )
 
     trainer = pl.Trainer(
         **OmegaConf.to_container(cfg.trainer),
-        distributed_backend='ddp' if cfg.trainer.gpus > 1 else None,
+        distributed_backend="ddp" if cfg.trainer.gpus > 1 else None,
         logger=tensorboad_logger,
         checkpoint_callback=model_ckpt,
     )
@@ -46,5 +44,5 @@ def main(cfg: DictConfig) -> None:
     trainer.test(model)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
