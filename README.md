@@ -38,7 +38,16 @@ This will run the model and save predictions in the `output/` directory.
 
 You can use multiple GPUs to predict on different slices of the fleet challenge by specifing additional `start` and `stop` arguments.
 
-If you wish to use a model that you have previously meta-trained, simply provide the relevant `ckpt_path=/path/to/checkpoint.ckpt` argument.
+If you wish to use a model that you have previously meta-trained, simply provide the relevant `model.ckpt_path=/full/path/to/checkpoint.ckpt` argument.
+
+### Meta-trained checkpoint
+
+You can download a meta-trained checkpoint from below:  
+`wget https://fleet-public.s3.us-west-2.amazonaws.com/unifew-meta-trained.ckpt`
+
+Expected download size `8.3G`  
+md5 `d44e3a7dc0658752035183d0805fdae9`  
+  
 
 ### Speed up meta-testing by parallelizing predictions
 
