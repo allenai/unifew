@@ -1,27 +1,24 @@
-from copy import deepcopy
-import pathlib
-from typing import Any, Sequence, Iterable, Dict, Tuple, Mapping
 import argparse
-import torch
-from torch.utils.data import Dataset, DataLoader
+import gc
+import os
+import pathlib
+import random
+import shutil
+from collections import defaultdict
+from copy import deepcopy
+from typing import Any, Dict, Iterable, Mapping, Sequence, Tuple
+
 import hydra
+import numpy as np
+import pytorch_lightning as pl
+import torch
+from fewshot import Model, make_challenge
 from hydra.utils import instantiate
 from omegaconf import DictConfig
-import gc
-import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from collections import defaultdict
-import random
-import os
-import shutil
-from fewshot import make_challenge
-import random
-import numpy as np
-import torch
-from fewshot import Model
+from torch.utils.data import DataLoader, Dataset
 
 from unifew.model import Unifew, UnifewDataset
-
 
 TMP_CKPT_DIR = "/dev/shm"  # directory to save checkpoints during metatest (for comparing with lm_bff only)
 

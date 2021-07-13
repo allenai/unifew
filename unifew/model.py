@@ -1,93 +1,26 @@
-from typing import Optional, Callable
 import logging
-import os
-import random
+import string
+from typing import Callable, Optional
+
 import hydra
+import numpy as np
 import pytorch_lightning as pl
 import torch
-import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_sequence
-import numpy as np
-from torch.optim.lr_scheduler import LambdaLR
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
-from transformers import (
-    RobertaModel,
-    RobertaTokenizer,
-    GPT2Tokenizer,
-    GPT2LMHeadModel,
-    GPT2Model,
-)
-from torch.utils.data import DataLoader, IterableDataset
-from omegaconf import OmegaConf, DictConfig
-from transformers.optimization import (
-    get_linear_schedule_with_warmup,
-    get_constant_schedule_with_warmup,
-    get_constant_schedule,
-)
-from transformers import Adafactor
-from torch.optim.optimizer import Optimizer
-import itertools
-from collections import defaultdict
-from sklearn.metrics import f1_score, accuracy_score
-import string
-import pathlib
 import re
-from unifew.utils import assemble_sampler_cfg
-import fewshot
+from sklearn.metrics import accuracy_score, f1_score
 
-# check pl version
+from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader, IterableDataset
+from transformers import Adafactor
+from transformers.optimization import (
+    get_constant_schedule,
+    get_constant_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
+)
 
-
-RELATION_TASK_TYPE = "rel"
-
-
-def versiontuple(v):
-    return tuple(map(int, (v.split("."))))
-
-
-assert versiontuple(pl.__version__) >= versiontuple("1.0.3")
+from unifew.utils import assemble_sampler_cfg, create_batches, normalize_label
 
 logger = logging.getLogger(__name__)
-
-
-def create_batches(iterable, batch_size=None, tensorize=True, pad=False, padding_value=0.0):
-    if batch_size is None:
-        yield [e for e in iterable]
-    else:
-        l = len(iterable)
-        for ndx in range(0, l, batch_size):
-            sequence = list(iterable[ndx : min(ndx + batch_size, l)])
-            if tensorize:
-                sequence = [torch.tensor(el) for el in sequence]
-                if pad:
-                    res = pad_sequence(sequence, padding_value=padding_value, batch_first=True)
-                else:
-                    assert len(set([el.shape[0] for el in sequence])) == 1
-                    res = sequence
-            else:
-                res = sequence
-            yield res
-
-
-def _normalize_label(label, valid_labels):
-    """normalize a label (remove "(B) " from a prediction string like "(B) No". )"""
-    res = re.sub(r"\([A-H]\) ", "", label)
-    final_res = res
-    if res not in valid_labels:
-        for lbl in valid_labels:
-            if lbl in res:
-                final_res = lbl
-                break
-    if final_res not in valid_labels:
-        # sometimes capitalization matters
-        for lbl in valid_labels:
-            if lbl.lower() == final_res.lower():
-                final_res = lbl
-                break
-        else:
-            final_res = random.choice(valid_labels)
-    return final_res
 
 
 class UnifewDataset(IterableDataset):
@@ -301,7 +234,7 @@ class UnifewDataset(IterableDataset):
         nli_datasets = ["scitail", "nli", "rte"]
         # TODO: dataset information was not avaialbe in metadata in earlier versions of flex
         # We used to infer it from labels
-        # some code here related to this needs cleaning up
+        # some code here related to this is redundent and needs cleaning up
         sentiment_label_mapping = {"positive": "positive", "negative": "negative"}
         snli_label_mapping = {
             "neutral": "Maybe",
@@ -348,7 +281,7 @@ class UnifewDataset(IterableDataset):
         return metadata, task_type
 
     def get_samples(self):
-        """get samples"""
+        """get samples from each training/testing episode"""
         for epiosode_data in self.metadatasampler:
             support_x, query_x, support_y, query_y, metadata = epiosode_data
             # get batched examples from this episode
@@ -488,7 +421,7 @@ class Unifew(pl.LightningModule):
 
         for predicted_label_str in texts:
             if predicted_label_str not in label_to_idx:
-                predicted_label_str = _normalize_label(predicted_label_str, list(label_to_idx.keys()))
+                predicted_label_str = normalize_label(predicted_label_str, list(label_to_idx.keys()))
             predicted_label = label_to_idx[predicted_label_str]
             pred_labels.append(predicted_label)
             global_label_pred = self.all_labels[predicted_label_str]

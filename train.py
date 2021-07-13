@@ -1,13 +1,15 @@
 import os
-from unifew.model import Unifew, UnifewDataset
-import hydra
-import torch
-import numpy as np
 import random
+
+import hydra
+import numpy as np
 import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
+import torch
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import ModelCheckpoint
-from omegaconf import OmegaConf, DictConfig
+from pytorch_lightning.loggers import TensorBoardLogger
+
+from unifew.model import Unifew
 
 
 @hydra.main(config_path="conf", config_name="train")
