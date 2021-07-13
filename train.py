@@ -22,9 +22,7 @@ def main(cfg: DictConfig) -> None:
 
     model = Unifew(cfg)
 
-    tensorboad_logger = TensorBoardLogger(
-        save_dir=cfg.save_dir, name=cfg.save_prefix, version=0  # always use version=0
-    )
+    tensorboad_logger = TensorBoardLogger(save_dir=cfg.save_dir, name=cfg.save_prefix, version=0)  # always use version=0
     model_ckpt = ModelCheckpoint(
         dirpath=os.path.join(cfg.save_dir, cfg.save_prefix),
         filename="{epoch}-{step}-{avg_val_acc:.2f}",

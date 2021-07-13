@@ -51,9 +51,7 @@ assert versiontuple(pl.__version__) >= versiontuple("1.0.3")
 logger = logging.getLogger(__name__)
 
 
-def create_batches(
-    iterable, batch_size=None, tensorize=True, pad=False, padding_value=0.0
-):
+def create_batches(iterable, batch_size=None, tensorize=True, pad=False, padding_value=0.0):
     if batch_size is None:
         yield [e for e in iterable]
     else:
@@ -63,9 +61,7 @@ def create_batches(
             if tensorize:
                 sequence = [torch.tensor(el) for el in sequence]
                 if pad:
-                    res = pad_sequence(
-                        sequence, padding_value=padding_value, batch_first=True
-                    )
+                    res = pad_sequence(sequence, padding_value=padding_value, batch_first=True)
                 else:
                     assert len(set([el.shape[0] for el in sequence])) == 1
                     res = sequence
@@ -95,9 +91,7 @@ def _normalize_label(label, valid_labels):
 
 
 class UnifewDataset(IterableDataset):
-    def __init__(
-        self, args, tokenizer=None, question=None, max_len=None, subset="train"
-    ):
+    def __init__(self, args, tokenizer=None, question=None, max_len=None, subset="train"):
         worker_info = torch.utils.data.get_worker_info()
         random_seed = 0 if worker_info is None else int(worker_info.id)
         sampler_cfg = assemble_sampler_cfg(args, split=subset)
@@ -173,9 +167,7 @@ class UnifewDataset(IterableDataset):
             final_text = f"{premise} Is {hypothesis}? \\n"
             for i, e in enumerate(all_labels):
                 final_text += f" ({string.ascii_uppercase[i]}) {e} "
-        context_tokens = tokenizer.encode(
-            final_text, add_special_tokens=True, padding="longest", truncation=True
-        )
+        context_tokens = tokenizer.encode(final_text, add_special_tokens=True, padding="longest", truncation=True)
 
         return context_tokens
 
@@ -224,9 +216,7 @@ class UnifewDataset(IterableDataset):
 
             labels = [idx_to_label[lbl] for lbl in labels]
 
-            textual_label_token_ids = tokenizer.batch_encode_plus(labels, padding=True)[
-                "input_ids"
-            ]
+            textual_label_token_ids = tokenizer.batch_encode_plus(labels, padding=True)["input_ids"]
             # list of lists of token ids
             doc_token_ids_list = encode_and_tokenize_docs(docs)
             label_token_ids_batches = [
@@ -351,14 +341,10 @@ class UnifewDataset(IterableDataset):
             task_type = "conll"
 
         if mappings is not None:
-            metadata["mapped_labels"] = {
-                mappings[e]: v for e, v in metadata["text_labels"].items()
-            }
+            metadata["mapped_labels"] = {mappings[e]: v for e, v in metadata["text_labels"].items()}
         else:
             metadata["mapped_labels"] = metadata["text_labels"]
-        metadata["mapped_labels"] = {
-            k.replace("_", " "): v for k, v in metadata["mapped_labels"].items()
-        }
+        metadata["mapped_labels"] = {k.replace("_", " "): v for k, v in metadata["mapped_labels"].items()}
         return metadata, task_type
 
     def get_samples(self):
@@ -393,9 +379,7 @@ class Unifew(pl.LightningModule):
         super(Unifew, self).__init__()
         self.hparams.update(hparams)
         self.args = hparams
-        self.train_dataloader_object = (
-            self.val_dataloader_object
-        ) = self.test_dataloader_object = None
+        self.train_dataloader_object = self.val_dataloader_object = self.test_dataloader_object = None
         if model is None:
             # instantiate model and tokenizer
             assert hparams.model_type == "unifew"
@@ -416,9 +400,7 @@ class Unifew(pl.LightningModule):
             if getattr(self.args, "optimizer", "adam") == "adam":
                 optimizer = torch.optim.Adam(self.parameters(), lr=self.args.lr)
                 num_steps = self.args.trainer.max_steps
-                warmup_steps = self.args.warmup or int(
-                    0.1 * num_steps
-                )  # NOTE: Hardcoded warmup steps
+                warmup_steps = self.args.warmup or int(0.1 * num_steps)  # NOTE: Hardcoded warmup steps
                 if getattr(self.args, "use_constant_schedule", False):
                     scheduler = get_constant_schedule(optimizer)
                 else:
@@ -447,16 +429,12 @@ class Unifew(pl.LightningModule):
     def training_step(self, batch, batch_nb):
         support_token_ids, support_y_ids, metadata = batch
         if self.args.model_type == "unifew" and getattr(self.args, "do_train", False):
-            output = self.model(
-                input_ids=support_token_ids, labels=support_y_ids, return_dict=True
-            )
+            output = self.model(input_ids=support_token_ids, labels=support_y_ids, return_dict=True)
             loss = output.loss
             learning_rate = self.trainer.optimizers[0].param_groups[0]["lr"]
             tensorboard_logs = {
                 "lr": learning_rate,
-                "mem": torch.cuda.memory_allocated(loss.device) / 1024 ** 3
-                if torch.cuda.is_available()
-                else 0,
+                "mem": torch.cuda.memory_allocated(loss.device) / 1024 ** 3 if torch.cuda.is_available() else 0,
                 "tr_loss": loss.detach().item(),
             }
             for k, v in tensorboard_logs.items():
@@ -486,9 +464,7 @@ class Unifew(pl.LightningModule):
 
         generated_sequence = self.model.generate(input_ids=query_token_ids)
         texts = [
-            self.tokenizer.decode(
-                seq, clean_up_tokenization_spaces=True, skip_special_tokens=True
-            )
+            self.tokenizer.decode(seq, clean_up_tokenization_spaces=True, skip_special_tokens=True)
             for seq in generated_sequence
         ]
         if query_y_ids is not None:  # calculate loss
@@ -499,15 +475,10 @@ class Unifew(pl.LightningModule):
                 return_dict=True,
             )
             loss = output.loss
-            label_str_orig = [
-                self.tokenizer.decode(lbl, skip_special_tokens=True)
-                for lbl in query_y_ids
-            ]
+            label_str_orig = [self.tokenizer.decode(lbl, skip_special_tokens=True) for lbl in query_y_ids]
             labels = [label_to_idx[lbl] for lbl in label_str_orig]
             global_label_orig = [self.all_labels[e] for e in label_str_orig]
-            global_label_orig = torch.tensor(
-                global_label_orig, device=query_token_ids.device, dtype=torch.int
-            )
+            global_label_orig = torch.tensor(global_label_orig, device=query_token_ids.device, dtype=torch.int)
         else:
             global_label_orig = None
             labels = None
@@ -517,23 +488,15 @@ class Unifew(pl.LightningModule):
 
         for predicted_label_str in texts:
             if predicted_label_str not in label_to_idx:
-                predicted_label_str = _normalize_label(
-                    predicted_label_str, list(label_to_idx.keys())
-                )
+                predicted_label_str = _normalize_label(predicted_label_str, list(label_to_idx.keys()))
             predicted_label = label_to_idx[predicted_label_str]
             pred_labels.append(predicted_label)
             global_label_pred = self.all_labels[predicted_label_str]
             global_pred_labels.append(global_label_pred)
 
-        global_pred_labels = torch.tensor(
-            global_pred_labels, device=query_token_ids.device, dtype=torch.int
-        )
-        pred_labels = torch.tensor(
-            pred_labels, device=query_token_ids.device, dtype=torch.int
-        )
-        step = torch.tensor(
-            self.trainer.global_step, device=query_token_ids.device, dtype=torch.int
-        )
+        global_pred_labels = torch.tensor(global_pred_labels, device=query_token_ids.device, dtype=torch.int)
+        pred_labels = torch.tensor(pred_labels, device=query_token_ids.device, dtype=torch.int)
+        step = torch.tensor(self.trainer.global_step, device=query_token_ids.device, dtype=torch.int)
         return {
             "prediction": pred_labels,
             "label": labels,

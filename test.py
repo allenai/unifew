@@ -85,9 +85,7 @@ class PTLWrapperModel(Model):
         assert question is not None
         self.question_str = question
         self.args = args
-        self.model.train_dataloader = (
-            self.model.val_dataloader
-        ) = self.model.test_dataloader = None
+        self.model.train_dataloader = self.model.val_dataloader = self.model.test_dataloader = None
         self.model.args.predictions_path = self.args.predictions_path
         self.model_orig_state_dict = deepcopy(self.model.state_dict())
         # trainer.fit ignores the passed dataloaders if model already has loaders
@@ -113,11 +111,7 @@ class PTLWrapperModel(Model):
     ) -> Tuple[Sequence[str], Sequence[float]]:
 
         # filter out empty support examples
-        valid_indices = [
-            idx
-            for idx in range(len(support_x))
-            if support_x[idx] and support_x[idx]["txt"]
-        ]
+        valid_indices = [idx for idx in range(len(support_x)) if support_x[idx] and support_x[idx]["txt"]]
         support_x = [support_x[idx]["txt"] for idx in valid_indices]
         support_y = [support_y[idx] for idx in valid_indices]
 
@@ -155,9 +149,7 @@ class PTLWrapperModel(Model):
             return train_x, train_y, val_x, val_y
 
         if val_x is not None:
-            valid_indices = [
-                idx for idx in range(len(val_x)) if val_x[idx] and val_x[idx]["txt"]
-            ]
+            valid_indices = [idx for idx in range(len(val_x)) if val_x[idx] and val_x[idx]["txt"]]
             val_x = [val_x[idx]["txt"] for idx in valid_indices]
             val_y = [val_y[idx] for idx in valid_indices]
             # here labels are passed in as string, convert to int
@@ -177,9 +169,7 @@ class PTLWrapperModel(Model):
                     args=self.args,
                 )
             )
-        elif getattr(
-            self.args, "lmbff_setting", False
-        ):  # only for comparisson with lm_bff
+        elif getattr(self.args, "lmbff_setting", False):  # only for comparisson with lm_bff
             support_x, support_y, val_x, val_y = split_for_lm_bff(support_x, support_y)
             # subset should be 'train' because of the way this function is designed
             val_ds = list(
@@ -228,9 +218,7 @@ class PTLWrapperModel(Model):
         )
 
         # data is already batched, so set batch_size=1
-        train_loader = DataLoader(
-            MetatestDataset(train_ds), batch_size=1, collate_fn=UnifewDataset.collate_fn
-        )
+        train_loader = DataLoader(MetatestDataset(train_ds), batch_size=1, collate_fn=UnifewDataset.collate_fn)
         val_loader = (
             DataLoader(
                 MetatestDataset(val_ds),
@@ -240,9 +228,7 @@ class PTLWrapperModel(Model):
             if val_ds
             else None
         )
-        test_loader = DataLoader(
-            MetatestDataset(test_ds), batch_size=1, collate_fn=UnifewDataset.collate_fn
-        )
+        test_loader = DataLoader(MetatestDataset(test_ds), batch_size=1, collate_fn=UnifewDataset.collate_fn)
         self.args.num_sanity_val_steps = 0
         self.args.gpus = 1
 
@@ -252,13 +238,9 @@ class PTLWrapperModel(Model):
 
         # train the model using the support examples in the episode
         if self.k > 0:  # few shot
-            if all(
-                [el[0].nelement() != 0 for el in train_ds]
-            ):  # check if support exists
+            if all([el[0].nelement() != 0 for el in train_ds]):  # check if support exists
                 if len(val_ds) > 0:
-                    dirpath = (
-                        f"{TMP_CKPT_DIR}/unifew-{self.args.start}-{self.args.stop}/"
-                    )
+                    dirpath = f"{TMP_CKPT_DIR}/unifew-{self.args.start}-{self.args.stop}/"
                     pathlib.Path(dirpath).parent.mkdir(parents=True, exist_ok=True)
                     checkpoint_callback = ModelCheckpoint(
                         monitor="avg_val_acc",
@@ -266,24 +248,16 @@ class PTLWrapperModel(Model):
                         save_top_k=1,
                         filepath=dirpath + "unifew-{avg_val_acc:.3f}",
                     )
-                    trainer = pl.Trainer.from_argparse_args(
-                        self.args, checkpoint_callback=checkpoint_callback, logger=None
-                    )
+                    trainer = pl.Trainer.from_argparse_args(self.args, checkpoint_callback=checkpoint_callback, logger=None)
                     trainer.fit(self.model, train_loader, val_loader)
                 else:
-                    trainer = pl.Trainer.from_argparse_args(
-                        self.args, checkpoint_callback=False, logger=None
-                    )
+                    trainer = pl.Trainer.from_argparse_args(self.args, checkpoint_callback=False, logger=None)
                     trainer.fit(self.model, train_loader)
             else:
-                trainer = pl.Trainer.from_argparse_args(
-                    self.args, checkpoint_callback=False, logger=None
-                )
+                trainer = pl.Trainer.from_argparse_args(self.args, checkpoint_callback=False, logger=None)
                 print("skipping training for this episode, no support examples")
         else:
-            trainer = pl.Trainer.from_argparse_args(
-                self.args, checkpoint_callback=False, logger=None
-            )
+            trainer = pl.Trainer.from_argparse_args(self.args, checkpoint_callback=False, logger=None)
 
         # test on query examples
         for p in self.model.parameters():
@@ -316,9 +290,7 @@ def main(cfg: DictConfig) -> None:
     torch.manual_seed(cfg.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(cfg.seed)
-    model = instantiate(
-        cfg.model, start=cfg.start, stop=cfg.stop, default_model=cfg.default_model
-    )
+    model = instantiate(cfg.model, start=cfg.start, stop=cfg.stop, default_model=cfg.default_model)
     evaluator = make_challenge(cfg.challenge)
     evaluator.save_model_predictions(
         model=model,
