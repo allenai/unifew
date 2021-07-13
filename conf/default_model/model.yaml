@@ -25,7 +25,6 @@ warmup: null
 lr: 3e-5
 do_train: true
 query_batch_size: 2
-# uniqa_path: '/net/nfs2.corp/s2-research/beltagy/qasper-baselines/unified_qa/t5-large-pt/'
 uniqa_path: ''
 use_constant_schedule: true
 optimizer: adam
