@@ -82,3 +82,18 @@ CUDA_VISIBLE_DEVICES=0 python train.py hydra.run.dir=tmp/model/ trainer.max_step
 ```
 
 Additional arguments can be found under 'conf/train.yaml' and 'conf/test.yaml'.
+
+
+# Citing
+
+If you find this repo useful, please cite our [preprint](https://arxiv.org/abs/2107.07170):
+```
+@misc{bragg2021flex,
+      title={FLEX: Unifying Evaluation for Few-Shot NLP},
+      author={Jonathan Bragg and Arman Cohan and Kyle Lo and Iz Beltagy},
+      year={2021},
+      eprint={2107.07170},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
